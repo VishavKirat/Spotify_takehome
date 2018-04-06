@@ -1,0 +1,93 @@
+service: spotify-wmdd-4999-18
+
+custom:
+  bucket: spotify-wmdd-4999-18
+  table: spotify-wmdd-4999
+  playlist: spotify-wmdd-4999-playlist
+
+provider:
+  name: aws
+  runtime: nodejs6.10
+  stage: dev
+  region: us-west-2
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:us-west-2:*:*"
+    - Effect: "Allow"
+      Action:
+        - s3:*
+      Resource: "*"
+
+functions:
+  Add:
+    handler: handler.Add
+    events:
+      - s3: 
+          bucket: ${self:custom.bucket}
+          event: s3:ObjectCreated:*
+
+  Get:
+    handler: handler.Get
+    events:
+      - http:
+          path: songs/
+          method: get
+          cors: true 
+  
+  Playlist:
+    handler: handler.Playlist
+    events:
+      - http:
+          path: songs
+          method: post
+          cors: true
+
+  Search:
+    handler: handler.Search
+    events:
+      - http:
+          path: songs/{name}
+          method: get
+          cors: true 
+
+resources:
+  Resources:
+    spotifying:
+      Type: 'AWS::DynamoDB::Table'
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:custom.table}
+        AttributeDefinitions:
+          -
+            AttributeName: Name
+            AttributeType: S
+        KeySchema:
+          -
+            AttributeName: Name
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    playlisting:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:custom.playlist}  
+        AttributeDefinitions:
+          - AttributeName: Name
+            AttributeType: S
+        KeySchema:
+          - AttributeName: Name
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+           
